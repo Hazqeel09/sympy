@@ -7,6 +7,7 @@ installed run the same tests for both.
 from __future__ import annotations
 from fractions import Fraction
 from decimal import Decimal
+from math import ceil, floor, trunc
 import pickle
 from typing import Callable
 
@@ -25,6 +26,35 @@ try:
     rational_types.append((mpq, type(mpq(1)), mpz, type(mpz(1))))
 except ImportError:
     pass
+
+
+def test_PythonMPQ_integral_rounding():
+    numerators = [0, 1, -1, 5, -5, 2**53 - 1, 2**53 + 1,
+                  2**60 + 1, -(2**60 + 1), 10**400 + 1, -(10**400 + 1)]
+    denominators = [1, -1, 2, -2, 3, -3, 2**60, 10**400]
+    for Q, _, _, _ in rational_types:
+        for numerator in numerators:
+            for denominator in denominators:
+                value = Q(numerator, denominator)
+                expected = Fraction(numerator, denominator)
+                for rounding in (floor, ceil, trunc):
+                    result = rounding(value)
+                    assert result == rounding(expected)
+                    if Q is PythonMPQ:
+                        assert type(result) is int
+
+
+def test_PythonMPQ_integral_rounding_without_float():
+    class ExactOnly(PythonMPQ):
+        def __float__(self):
+            raise AssertionError("integral rounding must not convert to float")
+
+    for numerator in [0, 1, -1, 10**400 + 1, -(10**400 + 1)]:
+        value = ExactOnly(numerator, 3)
+        expected = Fraction(numerator, 3)
+        assert floor(value) == floor(expected)
+        assert ceil(value) == ceil(expected)
+        assert trunc(value) == trunc(expected)
 
 
 def test_PythonMPQ():

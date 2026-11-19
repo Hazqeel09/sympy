@@ -1,10 +1,40 @@
 from __future__ import annotations
+from fractions import Fraction
 from sympy.polys.domains import ZZ, QQ
 from sympy.polys.matrices import DM
 from sympy.polys.matrices.domainmatrix import DomainMatrix
 from sympy.polys.matrices.exceptions import DMRankError, DMValueError, DMShapeError, DMDomainError
 from sympy.polys.matrices.lll import _ddm_lll, ddm_lll, ddm_lll_transform
 from sympy.testing.pytest import raises
+
+
+def test_lll_large_coefficients():
+    for large in [2**53 + 1, 2**60 + 1, 10**400 + 1]:
+        for sign in [1, -1]:
+            basis = DM([[1, 0, 0, 2],
+                        [0, 1, 0, 3],
+                        [0, 0, 1, sign*large]], ZZ).rep.to_ddm()
+            reduced, transform = ddm_lll_transform(basis)
+            assert transform.matmul(basis) == reduced
+            assert abs(DomainMatrix.from_rep(transform).det()) == 1
+            assert ddm_lll(basis) == reduced
+
+            orthogonal = []
+            norms = []
+            for row in reduced:
+                original = list(map(Fraction, map(int, row)))
+                vector = original[:]
+                coefficients = []
+                for previous, norm in zip(orthogonal, norms):
+                    coefficient = sum(a*b for a, b in zip(original, previous))/norm
+                    assert abs(coefficient) <= Fraction(1, 2)
+                    coefficients.append(coefficient)
+                    vector = [a - coefficient*b for a, b in zip(vector, previous)]
+                norm = sum(a*a for a in vector)
+                if norms:
+                    assert norm >= (Fraction(3, 4) - coefficients[-1]**2)*norms[-1]
+                orthogonal.append(vector)
+                norms.append(norm)
 
 
 def test_lll():

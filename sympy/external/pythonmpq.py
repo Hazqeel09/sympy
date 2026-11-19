@@ -114,6 +114,18 @@ class PythonMPQ:
             return -(-p//q)
         return p//q
 
+    def __floor__(self):
+        """Round down to the nearest integer."""
+        return self.numerator // self.denominator
+
+    def __ceil__(self):
+        """Round up to the nearest integer."""
+        return -(-self.numerator // self.denominator)
+
+    def __trunc__(self):
+        """Round towards zero to the nearest integer."""
+        return int(self)
+
     def __float__(self):
         """Convert to float (approximately)"""
         return self.numerator / self.denominator
